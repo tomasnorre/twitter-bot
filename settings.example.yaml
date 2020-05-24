@@ -1,0 +1,10 @@
+twitter:
+  oauth_access_token: <string>
+  oauth_access_token_secret: <string>
+  consumer_key: <string>
+  consumer_secret: <string>
+  hash:
+    - <one>
+    - <two>
+    - <three>
+
