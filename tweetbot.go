@@ -110,6 +110,8 @@ func main() {
 	close(out)
 
 	// Write latestTweetId to know where to start on next execution.
-	latestTweetId := strconv.Itoa(ix.MaxSlice(tweetIds))
-	WriteToFile("lastTweetId", latestTweetId)
+	if 0 < len(tweetIds) {
+		latestTweetId := strconv.Itoa(ix.MaxSlice(tweetIds))
+		WriteToFile("lastTweetId", latestTweetId)
+	}
 }
