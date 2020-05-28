@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"strconv"
 
@@ -25,9 +26,10 @@ type TwitterConf struct {
 	Hash                   []string `yaml:"hash"`
 }
 
-func check(e error) {
-	if e != nil {
-		panic(e)
+func closeFile(file *os.File) {
+	err := file.Close()
+	if err != nil {
+		log.Printf("could not close file %s: %s", file.Name(), err)
 	}
 }
 
@@ -36,34 +38,62 @@ func check(e error) {
 func WriteToFile(filename string, data string) error {
 	file, err := os.Create(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not open file: %s", err)
 	}
-	defer file.Close()
+	defer closeFile(file)
 
 	_, err = io.WriteString(file, data)
-	check(err)
-	return file.Sync()
+	if err != nil {
+		return fmt.Errorf("could not write string: %s", err)
+	}
+	return nil
+}
+
+func getLastTweetID() (int64, error) {
+	lastTweetIdFile, err := os.Open("lastTweetId")
+	if err != nil {
+		return 0, fmt.Errorf("could not open lastTweetId: %s", err)
+	}
+	defer closeFile(lastTweetIdFile)
+
+	lastTweetId, err := ioutil.ReadAll(lastTweetIdFile)
+	if err != nil {
+		return 0, fmt.Errorf("could not read lastTweetId content: %s", err)
+	}
+
+	lastTweetIdValue, err := strconv.ParseInt(string(lastTweetId), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("could not parse lastTweetId content as int64: %s", err)
+	}
+
+	return lastTweetIdValue, nil
 }
 
 func main() {
 
 	file, err := os.Open("settings.yaml")
 	if err != nil {
-		panic(err)
+		log.Fatalf("could not open file: %s", err)
 	}
+	defer closeFile(file)
 
 	filecontent, err := ioutil.ReadAll(file)
-	check(err)
+	if err != nil {
+		log.Fatalf("could not read settings.yaml content: %s", err)
+	}
 
 	var conf Configuration
 	err = yaml.Unmarshal(filecontent, &conf)
-	check(err)
+	if err != nil {
+		log.Fatalf("could not unmarshal settings.yaml content: %s", err)
+	}
 
-	fileReference, err := os.Open("lastTweetId")
-	check(err)
-
-	lastTweetId, err := ioutil.ReadAll(fileReference)
-	check(err)
+	var lastTweetID int64
+	if id, err := getLastTweetID(); err != nil {
+		log.Printf("could not get last tweet id: %s", err)
+	} else {
+		lastTweetID = id
+	}
 
 	config := oauth1.NewConfig(conf.Twitter.ConsumerKey, conf.Twitter.ConsumerSecret)
 	token := oauth1.NewToken(conf.Twitter.OauthAccessToken, conf.Twitter.OauthAccessTokenSecret)
@@ -71,21 +101,30 @@ func main() {
 
 	// Twitter client
 	client := twitter.NewClient(httpClient)
-	lastTweetIdValue, err := strconv.ParseInt(string(lastTweetId), 0, 64)
-	check(err)
 
 	out := make(chan *twitter.Search)
 
 	for _, h := range conf.Twitter.Hash {
 		go func(hash string) {
 			// Search Tweets
-			search, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
+
+			params := &twitter.SearchTweetParams{
 				Query:      hash,
 				Count:      5,
 				ResultType: "recent",
-				SinceID:    lastTweetIdValue,
-			})
-			check(err)
+			}
+
+			if lastTweetID != 0 {
+				params.SinceID = lastTweetID
+			}
+
+			search, _, err := client.Search.Tweets(params)
+			if err != nil {
+				log.Printf("could not search tweets for hash '%s': %s", hash, err)
+				// a search did not execute properly, send an empty object so we don't deadlock
+				out <- &twitter.Search{}
+				return
+			}
 			out <- search
 		}(h)
 	}
@@ -103,8 +142,11 @@ func main() {
 			fmt.Println(tweet.ID, tweet.Text)
 
 			var statusRetweetParam *twitter.StatusRetweetParams
-			client.Statuses.Retweet(tweet.ID, statusRetweetParam)
-
+			_, _, err = client.Statuses.Retweet(tweet.ID, statusRetweetParam)
+			if err != nil {
+				log.Printf("could not retweet for hash '%s': %s", conf.Twitter.Hash[i], err)
+				continue
+			}
 		}
 	}
 	close(out)
@@ -112,6 +154,9 @@ func main() {
 	// Write latestTweetId to know where to start on next execution.
 	if 0 < len(tweetIds) {
 		latestTweetId := strconv.Itoa(ix.MaxSlice(tweetIds))
-		WriteToFile("lastTweetId", latestTweetId)
+		err := WriteToFile("lastTweetId", latestTweetId)
+		if err != nil {
+			log.Fatalf("could not write lastTweetId to file: %s", err)
+		}
 	}
 }
