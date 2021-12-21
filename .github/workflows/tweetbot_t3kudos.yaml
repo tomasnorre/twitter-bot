@@ -12,12 +12,20 @@ jobs:
     name: Upload Release Asset
     runs-on: ubuntu-latest
     steps:
-      #- name: Get tweetbot
-      #- name: Write Config file
-      #- name: Get lastTweetId
-      #- name: Tweet
-      - name: Write lastTweetId
-        run: echo "1466747502904889347" > lastTweetId
+      - name: Get tweetbot
+        run: wget https://github.com/tomasnorre/twitter-bot/releases/download/v0.0.1/tweetbot
+
+      - name: Write Config file
+        run: echo ${{ secrets.TWEETBOT_TYPO3GRATITUDE_SETTINGS }} > settings.yaml
+
+      - name: Get lastTweetId
+        uses: actions/download-artifact@v2
+        with:
+          name: lastTweetIdTYPO3Gratitude
+
+      - name: Tweet
+        run: chmod +x tweetbot && ./tweetbot
+
       - name: Upload lastTweetId
         uses: actions/upload-artifact@v2
         with:
