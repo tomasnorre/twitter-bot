@@ -1,0 +1,24 @@
+name: Tweetbot TYPO3Gratitude
+
+on:
+  push:
+    branches:
+      - "**"
+    #  schedule:
+    #   - cron: '*/15 * * * *'
+
+jobs:
+  tweet:
+    name: Upload Release Asset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get tweetbot
+      - name: Write Config file
+      - name: Get lastTweetId
+      - name: Tweet
+      - name: Write/Upload lastTweetId
+        run: echo "1466747502904889347" > lastTweetId
+        uses: actions/upload-artifact@v2
+        with:
+          name: lastTweetIdTYPO3Gratitude
+          path: lastTweetId
