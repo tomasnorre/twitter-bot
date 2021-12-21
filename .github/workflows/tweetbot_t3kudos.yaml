@@ -12,12 +12,13 @@ jobs:
     name: Upload Release Asset
     runs-on: ubuntu-latest
     steps:
-      - name: Get tweetbot
-      - name: Write Config file
-      - name: Get lastTweetId
-      - name: Tweet
-      - name: Write/Upload lastTweetId
+      #- name: Get tweetbot
+      #- name: Write Config file
+      #- name: Get lastTweetId
+      #- name: Tweet
+      - name: Write lastTweetId
         run: echo "1466747502904889347" > lastTweetId
+      - name: Upload lastTweetId
         uses: actions/upload-artifact@v2
         with:
           name: lastTweetIdTYPO3Gratitude
