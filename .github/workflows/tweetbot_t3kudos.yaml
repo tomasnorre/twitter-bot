@@ -5,7 +5,10 @@ on:
     branches:
       - "**"
     #  schedule:
-    #   - cron: '*/15 * * * *'
+    #   - cron: "*/15 * * * *"
+
+env:
+  TWEETBOT_TYPO3GRATITUDE_SETTINGS: ${{ secrets.TWEETBOT_TYPO3GRATITUDE_SETTINGS }}
 
 jobs:
   tweet:
@@ -16,7 +19,7 @@ jobs:
         run: wget https://github.com/tomasnorre/twitter-bot/releases/download/v0.0.1/tweetbot
 
       - name: Write Config file
-        run: echo ${{ secrets.TWEETBOT_TYPO3GRATITUDE_SETTINGS }} > settings.yaml
+        run: echo ${{ env.TWEETBOT_TYPO3GRATITUDE_SETTINGS }} > settings.yaml
 
       - name: Get lastTweetId
         uses: actions/download-artifact@v2
